@@ -8,6 +8,13 @@
       "when": 1780489938671,
       "tag": "0000_fat_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780732496430,
+      "tag": "0001_chief_mole_man",
+      "breakpoints": true
     }
   ]
 }
