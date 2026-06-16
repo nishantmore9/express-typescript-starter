@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { RegisterInput, LoginInput } from '../schemas/auth.schema.js';
 import { env } from '../config/env.js';
+import { isValid } from 'zod/v3';
+import { version } from 'os';
 
 export class AuthService {
   static async register(input: RegisterInput) {
@@ -94,6 +96,70 @@ export class AuthService {
       accessToken,
       refreshToken
     }
+  }
+
+  static async refreshToken(oldRefreshToken: string) {
+    try {
+      // verify the old token
+      const decoded = jwt.verify(oldRefreshToken, env.JWT_REFRESH_SECRET) as {
+        userId: string;
+        sessionId: string;
+        version: string;
+      }
+
+      // Find the session in the database
+      const [session] = await db
+        .select()
+        .from(sessions)
+        .where(eq(sessions.id, decoded.sessionId))
+        .limit(1);
+
+      // Security Check: Token rotation & reuse detection 
+      if(!session || !session.isValid || session.tokenVersion !== decoded.version) {
+        // If a reused token is detected, invalidate ALL sessions for this user (Theft detection)
+        if(session) {
+          await db.update(sessions).set({isValid : false}).where(eq(sessions.userId,decoded.userId));
+        }
+        throw new Error('Session is invalid ot token was reused');
+      }
+
+      // Generate a new token version string
+      const nextTokenVersion = crypto.randomBytes(40).toString('hex');
+
+      // Update the session in the database
+      await db
+        .update(sessions)
+        .set({tokenVersion: nextTokenVersion})
+        .where(eq(sessions.id, session.id));
+
+      // Mint new tokens
+      const accessToken = jwt.sign(
+        { userId: session.userId, sessionId: session.id},
+        env.JWT_ACCESS_SECRET,
+        { expiresIn: '15m'}
+      );
+
+      const newRefreshToken = jwt.sign(
+        { userId: session.userId, sessionId: session.id, version: nextTokenVersion},
+        env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d'}
+      );
+
+      return {
+        accessToken,
+        newRefreshToken
+      }
+    } catch (error) {
+      throw new Error('Invalid refresh token');
+    }
+  }
+
+  static async logout(sessionId: string) {
+    // Invalidate the session in the database
+    await db
+      .update(sessions)
+      .set({ isValid: false })
+      .where(eq(sessions.id, sessionId));
   }
 
 }
