@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service.js";
 import { loginSchema } from "../schemas/auth.schema.js";
 import { AuthRequest } from "../middlewares/requireAuth.js";
-import strict from "node:assert/strict";
-import { start } from "node:repl";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 export const resgister = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -116,3 +117,54 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
     }
   });
 };
+
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params;
+    // Validate token
+    if(!token || typeof token !== 'string') {
+      res.status(400)
+          .json({
+            status : 'error',
+            message : 'Verification token is missing.'
+          });
+      return;
+    }
+    // Find user with same token
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.verificationToken, token))
+      .limit(1);
+
+    if(!user) {
+      res.status(400)
+          .json({ 
+            status: 'error', 
+            message: 'Invalid or expired verification token' 
+          });
+      return;
+    }
+    // update user set verified true
+    await db
+      .update(users)
+      .set({
+        isVerified: true,
+        verificationToken: null,
+      })
+      .where(eq(users.id, user.id));
+
+    res.status(200)
+        .json({ 
+          status: 'success', 
+          message: 'Email verified successfully!' 
+        });
+
+  } catch (error) {
+    res.status(500)
+        .json({ 
+          status: 'error', 
+          message: 'Internal server error' 
+        });
+  }
+}

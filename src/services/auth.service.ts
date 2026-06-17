@@ -6,8 +6,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { RegisterInput, LoginInput } from '../schemas/auth.schema.js';
 import { env } from '../config/env.js';
-import { isValid } from 'zod/v3';
-import { version } from 'os';
+import { EmailService } from './email.service.js';
 
 export class AuthService {
   static async register(input: RegisterInput) {
@@ -22,16 +21,26 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    // Generate a randome verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
     // Insert new user into the database
     const [newUser] = await db.insert(users).values({
       email,
       passwordHash,
+      verificationToken,
     })
     .returning({
       id : users.id,
       email: users.email,
       createdAt: users.createdAt,
     });
+
+    if(!newUser) {
+      throw new Error('Failed to create user record');
+    }
+    // Send verification mail with token
+    EmailService.sendVerificationEmail(newUser?.email, verificationToken).catch(console.error);
     
     return newUser;
   }

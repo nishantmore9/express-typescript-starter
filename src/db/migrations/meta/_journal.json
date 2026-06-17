@@ -15,6 +15,13 @@
       "when": 1780732496430,
       "tag": "0001_chief_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781699288565,
+      "tag": "0002_productive_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }
