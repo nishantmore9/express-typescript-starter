@@ -22,6 +22,20 @@
       "when": 1781699288565,
       "tag": "0002_productive_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781787826261,
+      "tag": "0003_petite_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781789019797,
+      "tag": "0004_spooky_magus",
+      "breakpoints": true
     }
   ]
 }

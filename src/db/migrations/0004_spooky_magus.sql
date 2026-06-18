@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "password_reset_expires" SET DATA TYPE timestamp;

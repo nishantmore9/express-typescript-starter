@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import e, { Request, Response } from "express";
 import { AuthService } from "../services/auth.service.js";
 import { loginSchema } from "../schemas/auth.schema.js";
 import { AuthRequest } from "../middlewares/requireAuth.js";
@@ -161,6 +161,59 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
         });
 
   } catch (error) {
+    res.status(500)
+        .json({ 
+          status: 'error', 
+          message: 'Internal server error' 
+        });
+  }
+}
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> =>  {
+  try {
+    const { email } = req.body;
+    await AuthService.forgotPassword(email);
+
+    res.status(200)
+      .json({
+        status: 'success',
+        message: 'If an account with that email exists, a reset link has been sent.',
+      });
+  } catch (error) {
+    res.status(500)
+      .json({
+        status: 'error', 
+        message: 'Internal server error' 
+      });
+  }
+}
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    if (!token || typeof token !== 'string') {
+        res.status(400)
+        .json({ 
+          status: 'error', 
+          message: 'Invalid token' 
+        });
+        return;
+    }
+
+    await AuthService.resetPassword(token, newPassword);
+
+    res.status(200)
+        .json({
+          status: 'success',
+          message: 'Password has been successfully reset. You can now log in.',
+        });
+  } catch (error: any) {
+    if (error.message === 'Invallid or expired password reset token') {
+      res.status(400).json({ status: 'error', message: error.message });
+      return;
+    }
     res.status(500)
         .json({ 
           status: 'error', 
