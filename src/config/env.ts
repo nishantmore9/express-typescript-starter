@@ -8,6 +8,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(10),
   JWT_REFRESH_SECRET: z.string().min(10),
+  NODE_ENV:z.string(),
 });
 
 const _env = envSchema.safeParse(process.env);

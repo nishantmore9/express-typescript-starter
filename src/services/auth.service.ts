@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { RegisterInput, LoginInput } from '../schemas/auth.schema.js';
 import { env } from '../config/env.js';
 import { EmailService } from './email.service.js';
+import { AppError } from '../utils/ApiError.js';
 
 export class AuthService {
   static async register(input: RegisterInput) {
@@ -14,7 +15,7 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if(existingUser.length > 0) {
-      throw new Error('User with this email already exists');
+      throw new AppError('User with this email already exists', 409);
     }
 
     // Hash the password
@@ -37,7 +38,7 @@ export class AuthService {
     });
 
     if(!newUser) {
-      throw new Error('Failed to create user record');
+      throw new AppError('Failed to create user record', 409);
     }
     // Send verification mail with token
     EmailService.sendVerificationEmail(newUser?.email, verificationToken).catch(console.error);
@@ -51,14 +52,14 @@ export class AuthService {
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     if(!user) {
-      throw new Error('Invalid credentials');
+      throw new AppError('Invalid credentials', 401);
     }
 
     // Compare password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     
     if(!isPasswordValid) {
-      throw new Error('Invalid credentials');
+      throw new AppError('Invalid credentials', 401);
     }
     // Generate token version for session management
     const tokenVersion = crypto.randomBytes(40).toString('hex');
@@ -129,7 +130,7 @@ export class AuthService {
         if(session) {
           await db.update(sessions).set({isValid : false}).where(eq(sessions.userId,decoded.userId));
         }
-        throw new Error('Session is invalid ot token was reused');
+        throw new AppError('Session is invalid old token was reused', 401);
       }
 
       // Generate a new token version string
@@ -159,7 +160,7 @@ export class AuthService {
         newRefreshToken
       }
     } catch (error) {
-      throw new Error('Invalid refresh token');
+      throw new AppError('Invalid refresh token', 401);
     }
   }
 
@@ -202,7 +203,7 @@ export class AuthService {
       .limit(1);
 
     if(!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
-      throw new Error('Invallid or expired password reset token');
+      throw new AppError('Invallid or expired password reset token', 401);
     }
 
     const salt = await bcrypt.genSalt(10);
